@@ -27,7 +27,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexe
 {
     EndPoints = { redisSetting.RedisUrl },
     Ssl = redisSetting.Ssl,
-    AbortOnConnectFail = false,
+    AbortOnConnectFail = redisSetting.AbortOnConnectFail
 }));
 
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();

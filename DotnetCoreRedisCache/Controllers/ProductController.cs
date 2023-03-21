@@ -44,7 +44,14 @@ namespace DotnetCoreRedisCache.Controllers
 
             }
             _context.Products.AddRange(products);
-            await _context.SaveChangesAsync();
+            var result = await _context.SaveChangesAsync();
+
+            if (result > 0)
+            {
+                var cacheStatus = await _redisCacheService.SetDataAsync<List<Product>>("products", products);
+                _logger.LogInformation($"Cache add product: status {cacheStatus}");
+            }
+            
 
             return CreatedAtAction("GetProduct", products);
         }
@@ -63,7 +70,7 @@ namespace DotnetCoreRedisCache.Controllers
         {
             try
             {
-                var cacheData = await _redisCacheService.GetData<IEnumerable<Product>>("product");
+                var cacheData = await _redisCacheService.GetDataAsync<IEnumerable<Product>>("products");
                 if (cacheData != null)
                 {
                     _logger.LogInformation("Load product from cache"); 
@@ -71,7 +78,13 @@ namespace DotnetCoreRedisCache.Controllers
                 }
 
                 var products = await _context.Products.AsNoTracking().ToListAsync();
-                await _redisCacheService.SetData("product", products);
+
+                if (products.Count > 0)
+                {
+                    var cacheStatus = await _redisCacheService.SetDataAsync("products", products);
+                    _logger.LogInformation($"Cache add product: status {cacheStatus}");
+                }
+
                 return products is not null ? Ok(products) : NotFound(products);
             }
             catch (Exception ex)
@@ -87,7 +100,20 @@ namespace DotnetCoreRedisCache.Controllers
 
             try
             {
+                var productCache = await _redisCacheService.GetDataAsync<Product>(id.ToString());
+
+                if (productCache != null)
+                {
+                    _logger.LogInformation($"Load product {id} from cache");
+                    return Ok(productCache);
+                }
+
                 var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+                if (product != null)
+                {
+                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(id.ToString(), product);
+                    _logger.LogInformation($"Cache add product: status {cacheStatus}");
+                }
                 return product is not null ? Ok(product) : NotFound(product);
             }
             catch (Exception ex)
@@ -104,6 +130,11 @@ namespace DotnetCoreRedisCache.Controllers
             {
                 _context.Products.Add(product);
                 var result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
+                    _logger.LogInformation($"Cache add product {product.Id}: status {cacheStatus}");
+                }
                 return result > 0 ? Ok(product) : NotFound(product);
             }
             catch (Exception ex)
@@ -121,6 +152,12 @@ namespace DotnetCoreRedisCache.Controllers
             {
                 _context.Entry(product).State = EntityState.Modified;
                 var result = await _context.SaveChangesAsync();
+
+                if (result > 0)
+                {
+                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
+                    _logger.LogInformation($"Cache add product {product.Id}: status {cacheStatus}");
+                }
 
                 return result > 0 ? Ok(product) : NotFound(product);
             }
@@ -143,8 +180,42 @@ namespace DotnetCoreRedisCache.Controllers
                 }
 
                 _context.Products.Remove(product);
-                await _context.SaveChangesAsync();
+                var result = await _context.SaveChangesAsync();
 
+                if (result > 0)
+                {
+                    var cacheStatus = await _redisCacheService.DeleteDataAsync<Product>(product.Id.ToString());
+                    _logger.LogInformation($"Cache remove product {product.Id}: status {cacheStatus}");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // GET: ProductController/Delete/5
+        [HttpDelete]
+        public async Task<ActionResult> Delete()
+        {
+            try
+            {
+                var product = await _context.Products.ToListAsync();
+                if (product == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Products.RemoveRange(product);
+                var result = await _context.SaveChangesAsync();
+
+                if (result > 0)
+                {
+                    var cacheStatus = await _redisCacheService.DeleteDataAsync<Product>("product");
+                    _logger.LogInformation($"Cache remove products: status {cacheStatus}");
+                }
                 return NoContent();
             }
             catch (Exception ex)

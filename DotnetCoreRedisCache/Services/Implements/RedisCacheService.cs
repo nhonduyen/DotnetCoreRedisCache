@@ -18,7 +18,7 @@ namespace DotnetCoreRedisCache.Services.Implements
             _cache = redisCache.GetDatabase();
         }
 
-        public async Task<bool> DeleteData<T>(string key)
+        public async Task<bool> DeleteDataAsync<T>(string key)
         {
             var isKeyExist = await _cache.KeyExistsAsync(key);
             if(!isKeyExist)
@@ -26,7 +26,7 @@ namespace DotnetCoreRedisCache.Services.Implements
             return await _cache.KeyDeleteAsync(key);
         }
 
-        public async Task<T> GetData<T>(string key)
+        public async Task<T> GetDataAsync<T>(string key)
         {
             var cacheData = await _cache.StringGetAsync(key);
             if (!cacheData.HasValue) return default;
@@ -34,7 +34,7 @@ namespace DotnetCoreRedisCache.Services.Implements
             return JsonConvert.DeserializeObject<T>(cacheData);
         }
 
-        public async Task<bool> SetData<T>(string key, T value, DateTimeOffset expirationTime)
+        public async Task<bool> SetDataAsync<T>(string key, T value, DateTimeOffset expirationTime)
         {
             var expiryTime = expirationTime.DateTime.Subtract(DateTime.Now);
             var isSet = await _cache.StringSetAsync(key, JsonConvert.SerializeObject(value), expiryTime);
@@ -42,7 +42,7 @@ namespace DotnetCoreRedisCache.Services.Implements
             return isSet;
         }
 
-        public async Task<bool> SetData<T>(string key, T value)
+        public async Task<bool> SetDataAsync<T>(string key, T value)
         {
             var redisSetting = _configuration.GetSection("Redis").Get<RedisSetting>();
             var expirationTime = TimeSpan.FromSeconds(redisSetting.AbsoluteExpirationRelativeToNow);
