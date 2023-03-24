@@ -1,6 +1,7 @@
 using DotnetCoreRedisCache.Infrastructure.Config;
 using DotnetCoreRedisCache.Infrastructure.Data;
 using DotnetCoreRedisCache.Services.Implements;
+using DotnetCoreRedisCache.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -19,10 +20,14 @@ builder.Services.AddDbContext<ProductDBContext>(option =>
 {
     option.UseSqlServer(builder.Configuration.GetConnectionString("ProductConnection"), providerOptions => providerOptions.CommandTimeout(120));
 });
-//builder.Services.AddStackExchangeRedisCache(options =>
-//{
-//    options.Configuration = redisSetting.RedisUrl;
-//});
+
+//option 1: IDistributedCacheService
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisSetting.RedisUrl;
+});
+
+// option 2: IRedisCacheService
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(new ConfigurationOptions
 {
     EndPoints = { redisSetting.RedisUrl },
@@ -31,6 +36,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexe
 }));
 
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
+builder.Services.AddScoped<IDistributedCacheService, DistributedCacheService>();
 
 var app = builder.Build();
 
@@ -39,16 +45,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    //builder.Services.AddDistributedMemoryCache();
-}
-else
-{
-    //builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(new ConfigurationOptions
-    //{
-    //    EndPoints = { redisSetting.RedisUrl },
-    //    Ssl = true,
-    //    AbortOnConnectFail = false,
-    //}));
 }
 
 app.UseHttpsRedirection();

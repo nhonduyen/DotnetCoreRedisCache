@@ -1,6 +1,6 @@
 ﻿using DotnetCoreRedisCache.Infrastructure.Data;
 using DotnetCoreRedisCache.Models;
-using DotnetCoreRedisCache.Services.Implements;
+using DotnetCoreRedisCache.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,13 +10,13 @@ namespace DotnetCoreRedisCache.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-    public class ProductController : ControllerBase
+    public class CacheController : ControllerBase
     {
         private readonly ProductDBContext _context;
-        private readonly IRedisCacheService _redisCacheService;
+        private readonly IDistributedCacheService _redisCacheService;
         private readonly ILogger<ProductController> _logger;
 
-        public ProductController(ProductDBContext context, IRedisCacheService redisCacheService, ILogger<ProductController> logger)
+        public CacheController(ProductDBContext context, IDistributedCacheService redisCacheService, ILogger<ProductController> logger)
         {
             _context = context;
             _redisCacheService = redisCacheService;
@@ -48,10 +48,10 @@ namespace DotnetCoreRedisCache.Controllers
 
             if (result > 0)
             {
-                var cacheStatus = await _redisCacheService.SetDataAsync<List<Product>>("products", products);
-                _logger.LogInformation($"Cache add product: status {cacheStatus}");
+                await _redisCacheService.SetDataAsync<List<Product>>("products", products);
+                _logger.LogInformation($"Cache add {products.Count} products");
             }
-            
+
 
             return CreatedAtAction("GetProduct", products);
         }
@@ -73,7 +73,7 @@ namespace DotnetCoreRedisCache.Controllers
                 var cacheData = await _redisCacheService.GetDataAsync<IEnumerable<Product>>("products");
                 if (cacheData != null)
                 {
-                    _logger.LogInformation("Load product from cache"); 
+                    _logger.LogInformation($"Load products from cache");
                     return Ok(cacheData);
                 }
 
@@ -81,8 +81,8 @@ namespace DotnetCoreRedisCache.Controllers
 
                 if (products.Count > 0)
                 {
-                    var cacheStatus = await _redisCacheService.SetDataAsync("products", products);
-                    _logger.LogInformation($"Cache add product: status {cacheStatus}");
+                    await _redisCacheService.SetDataAsync("products", products);
+                    _logger.LogInformation($"Cache add {products.Count} products");
                 }
 
                 return products is not null ? Ok(products) : NotFound(products);
@@ -111,8 +111,8 @@ namespace DotnetCoreRedisCache.Controllers
                 var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
                 if (product != null)
                 {
-                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(id.ToString(), product);
-                    _logger.LogInformation($"Cache add product: status {cacheStatus}");
+                    await _redisCacheService.SetDataAsync<Product>(id.ToString(), product);
+                    _logger.LogInformation($"Cache add product: {id}");
                 }
                 return product is not null ? Ok(product) : NotFound(product);
             }
@@ -132,8 +132,8 @@ namespace DotnetCoreRedisCache.Controllers
                 var result = await _context.SaveChangesAsync();
                 if (result > 0)
                 {
-                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
-                    _logger.LogInformation($"Cache add product {product.Id}: status {cacheStatus}");
+                    await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
+                    _logger.LogInformation($"Cache add product {product.Id}");
                 }
                 return result > 0 ? Ok(product) : NotFound(product);
             }
@@ -155,8 +155,8 @@ namespace DotnetCoreRedisCache.Controllers
 
                 if (result > 0)
                 {
-                    var cacheStatus = await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
-                    _logger.LogInformation($"Cache add product {product.Id}: status {cacheStatus}");
+                    await _redisCacheService.SetDataAsync<Product>(product.Id.ToString(), product);
+                    _logger.LogInformation($"Cache add product {product.Id}");
                 }
 
                 return result > 0 ? Ok(product) : NotFound(product);
@@ -184,8 +184,8 @@ namespace DotnetCoreRedisCache.Controllers
 
                 if (result > 0)
                 {
-                    var cacheStatus = await _redisCacheService.DeleteDataAsync<Product>(product.Id.ToString());
-                    _logger.LogInformation($"Cache remove product {product.Id}: status {cacheStatus}");
+                    await _redisCacheService.DeleteDataAsync<Product>(product.Id.ToString());
+                    _logger.LogInformation($"Cache remove product {product.Id}");
                 }
 
                 return NoContent();
@@ -213,8 +213,8 @@ namespace DotnetCoreRedisCache.Controllers
 
                 if (result > 0)
                 {
-                    var cacheStatus = await _redisCacheService.DeleteDataAsync<Product>("product");
-                    _logger.LogInformation($"Cache remove products: status {cacheStatus}");
+                    await _redisCacheService.DeleteDataAsync<Product>("product");
+                    _logger.LogInformation($"Cache remove {product.Count} products");
                 }
                 return NoContent();
             }
