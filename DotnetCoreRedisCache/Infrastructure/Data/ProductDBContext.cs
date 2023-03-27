@@ -12,6 +12,7 @@ namespace DotnetCoreRedisCache.Infrastructure.Data
         }
 
         public DbSet<Product> Products { get; set; }
+        public DbSet<TransactionDetails> TransactionDetails { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
