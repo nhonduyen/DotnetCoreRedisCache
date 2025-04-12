@@ -2,11 +2,7 @@
 using DotnetCoreRedisCache.Infrastructure.Utility;
 using DotnetCoreRedisCache.Models;
 using DotnetCoreRedisCache.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Distributed;
-using Newtonsoft.Json;
-using System.Text;
 
 namespace DotnetCoreRedisCache.Controllers
 {
@@ -29,8 +25,7 @@ namespace DotnetCoreRedisCache.Controllers
         public async Task<ActionResult<TransactionDetails>> PostTransactionDetails(TransactionDetails transactionDetails)
         {
             // Create a hash key using transaction id, dr and cr amount
-            string idempotencyKey = HashGenerator.GetHash(transactionDetails.TransactionId.ToString()
-                + transactionDetails.DrAmount.ToString() + transactionDetails.CrAmount.ToString());
+            string idempotencyKey = HashGenerator.GetHash(transactionDetails);
 
 
             // check hash key is exists in the redis cache

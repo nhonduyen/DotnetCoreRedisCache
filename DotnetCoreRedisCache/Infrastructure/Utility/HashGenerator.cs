@@ -1,33 +1,28 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace DotnetCoreRedisCache.Infrastructure.Utility
 {
     public class HashGenerator
     {
-        public static string GetHash(string plainText)
+        public static string GetHash(object obj)
         {
-            string hashText = string.Empty;
-            hashText = ComputeSha256Hash(plainText);
+            var json = JsonSerializer.Serialize(obj);
+            var hashText = ComputeSha256Hash(json);
             return hashText;
         }
 
-        static string ComputeSha256Hash(string rawData)
+        static string ComputeSha256Hash(string json)
         {
             // Create a SHA256   
-            using (var sha256Hash = SHA256.Create())
-            {
-                // ComputeHash - returns byte array  
-                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+            using var sha256Hash = SHA256.Create();
 
-                // Convert byte array to a string   
-                StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    builder.Append(bytes[i].ToString("x2"));
-                }
-                return builder.ToString();
-            }
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            byte[] hashBytes = sha256Hash.ComputeHash(bytes);
+
+            // Convert to hex string
+            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
     }
 }
