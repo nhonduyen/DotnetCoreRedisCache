@@ -1,7 +1,6 @@
 ﻿using DotnetCoreRedisCache.Infrastructure.Data;
 using DotnetCoreRedisCache.Models;
 using DotnetCoreRedisCache.Services.Implements;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;

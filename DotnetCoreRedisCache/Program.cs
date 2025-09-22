@@ -3,6 +3,9 @@ using DotnetCoreRedisCache.Infrastructure.Data;
 using DotnetCoreRedisCache.Services.Implements;
 using DotnetCoreRedisCache.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using RedLockNet.SERedis.Configuration;
+using RedLockNet.SERedis;
+using RedLockNet;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +40,19 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexe
 
 builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
 builder.Services.AddScoped<IDistributedCacheService, DistributedCacheService>();
+
+// Add RedLock
+builder.Services.AddSingleton<IDistributedLockFactory>(provider =>
+{
+    var multiplexers = new List<RedLockMultiplexer>
+    {
+        ConnectionMultiplexer.Connect(redisSetting.RedisUrl)
+    };
+    return RedLockFactory.Create(multiplexers);
+});
+
+// Add our service
+builder.Services.AddSingleton<IRequestCoalescingService, RequestCoalescingService>();
 
 var app = builder.Build();
 

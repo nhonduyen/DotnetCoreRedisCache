@@ -15,12 +15,18 @@ namespace DotnetCoreRedisCache.Controllers
         private readonly ProductDBContext _context;
         private readonly IDistributedCacheService _redisCacheService;
         private readonly ILogger<ProductController> _logger;
+        private readonly IRequestCoalescingService _coalescing;
 
-        public CacheController(ProductDBContext context, IDistributedCacheService redisCacheService, ILogger<ProductController> logger)
+        public CacheController(
+            ProductDBContext context, 
+            IDistributedCacheService redisCacheService, 
+            ILogger<ProductController> logger,
+            IRequestCoalescingService coalescing)
         {
             _context = context;
             _redisCacheService = redisCacheService;
             _logger = logger;
+            _coalescing = coalescing;
         }
 
         [HttpPost]
@@ -119,6 +125,43 @@ namespace DotnetCoreRedisCache.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+
+        // GET: ProductController/Details/5
+        [HttpGet("{id}/coalescing")]
+        public async Task<ActionResult> DetailCoalescing([Required] Guid id)
+        {
+            try
+            {
+                var product = await _coalescing.GetOrCreateAsync(
+                    key: $"product:{id}",
+                    factory: async () =>
+                    {
+                        _logger.LogInformation("Fetching product {ProductId} from database", id);
+                        var result = await _context.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+                        if (result == null)
+                        {
+                            _logger.LogWarning("Product {ProductId} not found", id);
+                        }
+                        return result;
+                    },
+                    expiration: TimeSpan.FromMinutes(10), // Cache for 10 minutes
+                    lockTimeout: TimeSpan.FromSeconds(5), // Hold lock for max 5 seconds
+                    retryTime: TimeSpan.FromSeconds(2),   // Retry for 2 seconds
+                    waitTime: TimeSpan.FromMilliseconds(50) // 50ms between retries
+                );
+
+                if (product == null)
+                    return NotFound($"Product with ID {id} not found");
+
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving product {ProductId}", id);
+                return StatusCode(500, "Internal server error");
             }
         }
 
